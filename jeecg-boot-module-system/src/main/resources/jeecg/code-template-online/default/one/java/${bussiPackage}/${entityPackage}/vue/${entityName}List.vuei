@@ -4,6 +4,13 @@
     <div class="table-page-search-wrapper">
       <a-form layout="inline" @keyup.enter.native="searchQuery">
         <a-row :gutter="24">
+          <!-- 示例：queryParam是封装好的对象
+            <a-col :xl="6" :lg="7" :md="8" :sm="24">
+                <a-form-item label="XXXX">
+                    <a-input placeholder="请输入XXXX" v-model="queryParam.XXXX"></a-input>
+                </a-form-item>
+            </a-col>
+          -->
 <#assign query_field_no=0>
 <#assign query_field_select=false>
 <#assign query_field_date=false>
