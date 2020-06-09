@@ -30,4 +30,9 @@ public  class IOnlCgformTableServiceImpl implements IOnlCgformTableService {
         return this.mapper.listTableColumn(tableName);
     }
 
+    @Override
+    public String getOnlCgformHeadByTableName(String tableName) {
+        return this.mapper.getOnlCgformHeadByTableName(tableName);
+    }
+
 }
