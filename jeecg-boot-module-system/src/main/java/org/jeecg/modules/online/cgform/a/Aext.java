@@ -8,7 +8,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.shiro.authz.annotation.RequiresRoles;
 import org.aspectj.util.FileUtil;
 import org.jeecg.common.api.vo.Result;
-import org.jeecg.common.util.ValidUtil;
 import org.jeecg.modules.online.cgform.entity.OnlCgformField;
 import org.jeecg.modules.online.cgform.entity.OnlCgformHead;
 import org.jeecg.modules.online.cgform.entity.OnlCgformIndex;
@@ -16,8 +15,6 @@ import org.jeecg.modules.online.cgform.model.OnlGenerateModel;
 import org.jeecg.modules.online.cgform.service.IOnlCgformFieldService;
 import org.jeecg.modules.online.cgform.service.IOnlCgformHeadService;
 import org.jeecg.modules.online.cgform.service.IOnlCgformTableService;
-import org.jeecg.modules.online.config.util.d;
-import org.jeecg.modules.system.model.SysDepartTreeModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -41,7 +38,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @RestController
 @RequestMapping({"/online/cgform/apii"})
-public class Aext extends a{
+public class Aext extends a {
     @Autowired
     private IOnlCgformHeadService onlCgformHeadService;
     @Autowired
@@ -184,6 +181,8 @@ public class Aext extends a{
      * 根据数据库表自动生成单表增删改查代码
      */
     public void runB() {
+        // 生成器运行前初始化，将onl_cgform_head和onl_cgform_field清空，不请空，如果表中包含这个表名，则会报重复的key
+        onlCgformTableService.deleteAllHeadAndField();
         List<Map> tables = onlCgformTableService.getTabletList();
         System.out.println("========数据库中的Tables:" + tables);
 
@@ -204,38 +203,40 @@ public class Aext extends a{
             "tableName": "test_demo"
           }
          */
+
         // mysql 代码块 --开始
-        ArrayList list = new ArrayList();
+        JSONArray jsonArray = new JSONArray();
         tables.forEach(table -> {
             // 调用接口给数据库插入表创建信息
-            String code = runA(table);
-            if(!code.startsWith("数据库")){
+            JSONObject result = runA(table);
+            if (result.get("code") != null) {
                 //组织数据并调用
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put("projectPath",props.getProperty("project_path")); // 生成代码存储位置
-                jsonObject.put("jspMode","one");  // 单表
-                jsonObject.put("ftlDescription",table.get("TABLE_COMMENT")); // 表描述
-                jsonObject.put("jformType","1");
-                jsonObject.put("tableName_tmp",table.get("TABLE_NAME")); // 表名
-                jsonObject.put("entityName",toUpperCaseFirstOne(lineToHump((String) table.get("TABLE_NAME")))); // 实体名称
-                jsonObject.put("entityPackage",""); // 包名
-                jsonObject.put("packageStyle","service"); // 业务分层
-                jsonObject.put("codeTypes","controller,service,dao,mapper,entity,vue"); // 要生成的模板
-                jsonObject.put("code",code); // 要生成的模板
-                jsonObject.put("tableName",table.get("TABLE_NAME")); // 表名
+                jsonObject.put("projectPath", props.getProperty("project_path")); // 生成代码存储位置
+                jsonObject.put("jspMode", "one");  // 单表
+                jsonObject.put("ftlDescription", table.get("TABLE_COMMENT")); // 表描述
+                jsonObject.put("jformType", "1");
+                jsonObject.put("tableName_tmp", table.get("TABLE_NAME")); // 表名
+                jsonObject.put("entityName", toUpperCaseFirstOne(lineToHump((String) table.get("TABLE_NAME")))); // 实体名称
+                jsonObject.put("entityPackage", props.getProperty("entity_package")); // 包名
+                jsonObject.put("packageStyle", "service"); // 业务分层
+                jsonObject.put("codeTypes", "controller,service,dao,mapper,entity,vue"); // 要生成的模板
+                jsonObject.put("code", result.get("code")); // 要生成的模板
+                jsonObject.put("tableName", table.get("TABLE_NAME")); // 表名
                 // 调用接口
                 b(jsonObject);
-            }else{
-                list.add(code);
             }
+            jsonArray.addAll((JSONArray) result.get("message"));
         });
-        list.forEach(l->{
-            System.out.println(l);
+        jsonArray.forEach(l -> {
+            System.err.println(l);
         });
         // mysql 代码块 --结束
+
     }
 
-    private String runA(Map table){
+    private JSONObject runA(Map table) {
+        JSONObject jsonObject = new JSONObject();
         // 1、调用创建addAll接口,设置表信息
         //组织数据
         /*
@@ -294,12 +295,12 @@ public class Aext extends a{
         List<OnlCgformIndex> onlCgformindexs = new ArrayList<OnlCgformIndex>(); // 表信息
         b.setIndexs(onlCgformindexs);
         OnlCgformHead onlCgformHead = new OnlCgformHead(); // 表信息
-        onlCgformHead.setFormCategory("bdfl_ptbd"); //
+        onlCgformHead.setFormCategory("bdfl_include"); // 导入表单
         onlCgformHead.setFormTemplate("99"); // form表单模板
         onlCgformHead.setIdType("uuid");  // 主键生成策略
-        onlCgformHead.setIsCheckbox("y"); //
-        onlCgformHead.setIsPage("y");  // 分页
-        onlCgformHead.setIsTree("n"); //  树结构
+        onlCgformHead.setIsCheckbox("Y"); //
+        onlCgformHead.setIsPage("Y");  // 分页
+        onlCgformHead.setIsTree("N"); //  树结构
         onlCgformHead.setQueryMode("single");
         onlCgformHead.setScroll(0); // 滚动条
         onlCgformHead.setTableName((String) table.get("TABLE_NAME")); // 表名
@@ -309,58 +310,186 @@ public class Aext extends a{
         b.setHead(onlCgformHead);
 
         // 查询表的字段信息
-
+        JSONArray jsonArray = new JSONArray(); // 错误信息记录
         List<OnlCgformField> list = new ArrayList<>(); // 列信息
         List<Map> columns = onlCgformTableService.listTableColumn((String) table.get("TABLE_NAME"));
-        columns.forEach(column->{
+        columns.forEach(column -> {
+            String[] column_comments = ((String) column.get("COLUMN_COMMENT")).split("-");
+            if (column_comments.length != 8) {
+                jsonArray.add((String) table.get("TABLE_NAME") + "表的字段" + (String) column.get("COLUMN_NAME") + "的注释长度必须包含8个-分隔符，请检查!");
+                return;
+            }
             OnlCgformField object = new OnlCgformField();
-            object.setDbFieldName((String)column.get("COLUMN_NAME"));
-            object.setDbDefaultVal((String)column.get("COLUMN_DEFAULT"));
-            object.setDbFieldTxt((String)column.get("COLUMN_COMMENT"));
-            object.setDbIsKey(column.get("COLUMN_KEY")=="PRI"?1:0);
-            object.setDbIsNull(column.get("IS_NULLABLE")=="YES"?1:0);
+            object.setDbFieldName((String) column.get("COLUMN_NAME"));
+            object.setDbDefaultVal((String) column.get("COLUMN_DEFAULT"));
+            object.setDbFieldTxt(column_comments[1]);
+            object.setDbIsKey("PRI".equals(column.get("COLUMN_KEY")) ? 1 : 0);
+            object.setDbIsNull(column_comments[3].contains("req") ? 1 : 0);
+            // db_length后期需要优化
             int db_length = 99;
-            if(column.get("CHARACTER_MAXIMUM_LENGTH")!=null){
-                if((new BigInteger(column.get("CHARACTER_MAXIMUM_LENGTH").toString())).compareTo(new BigInteger("2147483647"))==1){
+            if (column.get("CHARACTER_MAXIMUM_LENGTH") != null) {
+                if ((new BigInteger(column.get("CHARACTER_MAXIMUM_LENGTH").toString())).compareTo(new BigInteger("2147483647")) == 1) {
                     db_length = 2147483647;
-                }else{
+                } else {
                     db_length = Integer.valueOf(column.get("CHARACTER_MAXIMUM_LENGTH").toString());
                 }
-            }else {
+            } else {
                 db_length = 2147483647;
             }
-
+            // 说明(必填)0-名称(必填)1-控件类型(必填)2-验证规则(必填)3-Dict4-查询5-新增6-列表7
             object.setDbLength(db_length);
             object.setDbType((String) column.get("DATA_TYPE"));
             object.setFieldLength(db_length);
-            object.setFieldMustInput("0");
-            object.setFieldShowType("text"); // text,date
-            object.setIsQuery(column.get("COLUMN_KEY")=="PRI"?0:1);
-            object.setIsReadOnly(column.get("COLUMN_KEY")=="PRI"?1:0);
-            object.setIsShowForm(column.get("COLUMN_KEY")=="PRI"?0:1);
-            object.setIsShowList(column.get("COLUMN_KEY")=="PRI"?0:1);
-            object.setOrderNum(column.get("COLUMN_KEY")=="PRI"?1:0);
-            object.setQueryMode("single");
-//            dictField: ""
-//            dictTable: ""
-//            dictText: ""
+            object.setDbIsNull("YES".equals((String)column.get("IS_NULLABLE"))?0:1);
+            object.setFieldMustInput(column_comments.length > 3 && column_comments[3].contains("req") ? "1" : "0");
+            object.setFieldShowType(fieldShowTypeEscape(column_comments.length > 2 ? column_comments[2] : "text")); // 字段显示类型
+            object.setIsQuery("PRI".equals(column.get("COLUMN_KEY")) ? 0 : isQueryEscape(column_comments.length > 5 ? column_comments[5] : "null"));
+            object.setIsReadOnly("PRI".equals(column.get("COLUMN_KEY")) ? 1 : 0);
+            object.setIsShowForm("PRI".equals(column.get("COLUMN_KEY")) ? 0 : isShowFormEscape(column_comments.length > 6 ? column_comments[6] : "null"));
+            object.setIsShowList("PRI".equals(column.get("COLUMN_KEY")) ? 0 : isShowListEscape(column_comments.length > 7 ? column_comments[7] : "null"));
+            object.setOrderNum("PRI".equals(column.get("COLUMN_KEY")) ? 1 : 0);
+            object.setQueryMode(column_comments.length > 5 && "searplus".equals(column_comments[5]) ? "" : "single");
+            object.setDictTable(column_comments.length > 4 && "null".equals(column_comments[4]) ? column_comments[4].split(",")[0] : "");
+            object.setDictField(column_comments.length > 4 && "null".equals(column_comments[4]) && column_comments[4].split(",").length == 3 ? column_comments[4].split(",")[2] : "");
+            object.setDictText(column_comments.length > 4 && "null".equals(column_comments[4]) && column_comments[4].split(",").length >= 2 ? column_comments[4].split(",")[1] : "");
+            object.setFieldValidType(fieldValidTypeCheck(column_comments.length > 3 ? column_comments[3] : ""));
 //            fieldExtendJson: ""
 //            fieldHref: ""
-//            fieldValueRuleCode: ""
-//            id: "15916930484041"
 //            mainField: ""
 //            mainTable: ""
             list.add(object);
         });
-        b.setFields(list);
+        if (list.size() > 0) {
+            b.setFields(list);
+            this.onlCgformHeadService.addAll(b);
+            jsonObject.put("code", onlCgformTableService.getOnlCgformHeadByTableName((String) table.get("TABLE_NAME")));
+        }
+        jsonObject.put("message", jsonArray);
+        return jsonObject;
 
-        String var2 = b.getHead().getTableName();
-//          if(d.a(var2)) {
-//              return "数据库表[" + var2 + "]已存在";
-//          }else{
-              this.onlCgformHeadService.addAll(b);
-              return onlCgformTableService.getOnlCgformHeadByTableName((String) table.get("TABLE_NAME"));
-//          }
+    }
+
+    private String fieldValidTypeCheck(String fieldValueRuleCode) {
+        String temp = "";
+        String[] arr = fieldValueRuleCode.split(",");
+        if (arr.length == 1) {
+            temp = arr[0];
+        } else {
+            for (String s : arr) {
+                if (!"req".equals(s)) {
+                    temp += s+",";
+                }
+            }
+        }
+        return temp;
+    }
+
+    /**
+     * 为了后端生成代码和前端生成代码兼容，字段显示类型需调用转义方法转以后使用
+     *
+     * @param fieldShowType 字段显示类型
+     * @return 返回转义后的字符串
+     */
+    private String fieldShowTypeEscape(String fieldShowType) {
+        switch (fieldShowType) {
+            case "txt":
+                fieldShowType = "text";
+                break;
+            case "pwd":
+                fieldShowType = "password";
+                break;
+            case "rad":
+                fieldShowType = "radio";
+                break;
+            case "sels":
+                fieldShowType = "sel_search";
+                break;
+            case "selm":
+                fieldShowType = "list_multi";
+                break;
+            case "chb":
+                fieldShowType = "checkbox";
+                break;
+            case "time":
+                fieldShowType = "datetime";
+                break;
+            case "img":
+                fieldShowType = "image";
+                break;
+            case "txta":
+                fieldShowType = "textarea";
+                break;
+            case "ume":
+                fieldShowType = "umeditor";
+                break;
+        }
+        return fieldShowType;
+    }
+
+    /**
+     * 查询 标识转义
+     *
+     * @param isQuery 查询标识
+     * @return 返回转义后的字符串
+     */
+    private int isQueryEscape(String isQuery) {
+        int temp = 1;
+        switch (isQuery) {
+            case "sear":
+                temp = 1;
+                break;
+            case "nosea":
+                temp = 0;
+                break;
+            case "searplus":
+                temp = 1;
+                break;
+            default:
+                temp = 1;
+        }
+        return temp;
+    }
+
+    /**
+     * 新增 标识转义
+     *
+     * @param isShowForm 新增标识
+     * @return 返回转义后的字符串
+     */
+    private int isShowFormEscape(String isShowForm) {
+        int temp = 1;
+        switch (isShowForm) {
+            case "add":
+                temp = 1;
+                break;
+            case "noadd":
+                temp = 0;
+                break;
+            default:
+                temp = 1;
+        }
+        return temp;
+    }
+
+    /**
+     * 列表 标识转义
+     *
+     * @param isShowList 列表标识
+     * @return 返回转义后的字符串
+     */
+    private int isShowListEscape(String isShowList) {
+        int temp = 1;
+        switch (isShowList) {
+            case "list":
+                temp = 1;
+                break;
+            case "nolist":
+                temp = 0;
+                break;
+            default:
+                temp = 1;
+        }
+        return temp;
     }
 
     public static void main(String[] args) {

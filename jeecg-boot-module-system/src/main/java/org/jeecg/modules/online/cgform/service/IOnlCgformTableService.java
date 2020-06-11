@@ -8,4 +8,5 @@ public interface IOnlCgformTableService {
     public List<Map> getTabletList();
     public List<Map> listTableColumn(String tableName);
     public String getOnlCgformHeadByTableName(String tableName);
+    public void deleteAllHeadAndField();
 }

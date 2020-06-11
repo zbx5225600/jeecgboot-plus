@@ -1,6 +1,7 @@
 package org.jeecg.modules.online.cgform.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Select;
 import org.jeecg.modules.online.cgform.entity.OnlCgformHead;
 
@@ -16,4 +17,10 @@ public interface TableMapper extends BaseMapper {
 
     @Select("select id from onl_cgform_head where table_name=#{tableName}")
     String getOnlCgformHeadByTableName(String tableName);
+
+    @Delete("delete from onl_cgform_field")
+    void deleteAllOnlCgformField();
+
+    @Delete("delete from onl_cgform_head")
+    void deleteAllOnlCgformHead();
 }

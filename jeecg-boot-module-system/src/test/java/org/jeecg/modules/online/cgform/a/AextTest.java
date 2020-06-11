@@ -13,7 +13,9 @@ public class AextTest {
     @Autowired
     private Aext aext;
 
-
+    /**
+     * 由数据库表自动化生成前后端代码入口
+     */
     @Test
     public void cgformTable() {
         aext.runB();

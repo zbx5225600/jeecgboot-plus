@@ -35,4 +35,10 @@ public  class IOnlCgformTableServiceImpl implements IOnlCgformTableService {
         return this.mapper.getOnlCgformHeadByTableName(tableName);
     }
 
+    @Override
+    public void deleteAllHeadAndField() {
+        this.mapper.deleteAllOnlCgformHead();
+        this.mapper.deleteAllOnlCgformField();
+    }
+
 }

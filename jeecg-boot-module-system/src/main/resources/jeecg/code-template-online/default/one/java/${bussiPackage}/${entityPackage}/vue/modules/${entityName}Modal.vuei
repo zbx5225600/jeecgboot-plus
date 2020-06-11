@@ -53,6 +53,8 @@
           <j-select-user-by-dep v-decorator="['${po.fieldName}', validatorRules.${po.fieldName}]" :trigger-change="true"/>
 	<#elseif po.classType =='textarea'>
           <a-textarea v-decorator="['${po.fieldName}', validatorRules.${po.fieldName}]" rows="4" placeholder="请输入${po.filedComment}"/>
+    <#elseif po.classType =='swi'>
+          <a-switch checked-children="0" un-checked-children="1" default-checked/>
 	<#elseif po.classType=='list' || po.classType=='radio'>
 		<#assign form_select = true>
           <j-dict-select-tag type="${po.classType}" v-decorator="['${po.fieldName}', validatorRules.${po.fieldName}]" :trigger-change="true" dictCode="${form_field_dictCode}" placeholder="请选择${po.filedComment}"/>
