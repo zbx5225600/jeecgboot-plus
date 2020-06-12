@@ -41,4 +41,9 @@ public  class IOnlCgformTableServiceImpl implements IOnlCgformTableService {
         this.mapper.deleteAllOnlCgformField();
     }
 
+    @Override
+    public List<String> getPRIType(String tableName) {
+        return this.mapper.queryPRIType(tableName);
+    }
+
 }

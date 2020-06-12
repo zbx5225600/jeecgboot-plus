@@ -22,7 +22,7 @@
           {pattern:/^.{${(fieldValidType?split(","))[1]}}$/, message: '请输入小于${(fieldValidType?split(","))[1]}位任意字符!'},
       <#-- 网址 -->
       <#elseif fieldValidType?contains('url')>
-            {pattern:/^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/, message: '请输入正确的网址!'},
+            {pattern:/^http[s]?:\/\/.*/, message: '请输入正确的网址!'},
       <#-- 电子邮件 -->
       <#elseif fieldValidType?contains('email')>
            {pattern:/^([\w]+\.*)([\w]+)@[\w]+\.\w{3}(\.\w{2}|)$/, message: '请输入正确的电子邮件!'},

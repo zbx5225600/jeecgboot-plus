@@ -78,7 +78,7 @@
 
   import { httpAction } from '@/api/manage'
   import pick from 'lodash.pick'
-  import { validateDuplicateValue } from '@/utils/util'
+  import { validateDuplicateValue,formatDate } from '@/utils/util'
   <#if form_date>
   import JDate from '@/components/jeecg/JDate'  
   </#if>
@@ -176,7 +176,7 @@
               httpurl+=this.url.edit;
                method = 'put';
             }
-            let formData = Object.assign(this.model, values);
+            let formData = Object.assign(this.model, this.dateFormatDate(values);
             console.log("表单提交数据",formData)
             httpAction(httpurl,formData,method).then((res)=>{
               if(res.success){
@@ -192,6 +192,16 @@
           }
          
         })
+      },
+      dateFormatDate(form){
+      <#list columns as po>
+      <#if po.isShow =='Y'>
+      	<#if po.classType =='date'>
+        form['${po.fieldName}'] = formatDate(form['${po.fieldName}'],"yyyy-MM-dd E a HH:mm:ss")
+        </#if>
+      </#if>
+      </#list>
+        return form;
       },
       handleCancel () {
         this.close()

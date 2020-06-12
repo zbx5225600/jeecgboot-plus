@@ -54,7 +54,7 @@
 	<#elseif po.classType =='textarea'>
           <a-textarea v-decorator="['${po.fieldName}', validatorRules.${po.fieldName}]" rows="4" placeholder="请输入${po.filedComment}"/>
     <#elseif po.classType =='swi'>
-          <a-switch checked-children="0" un-checked-children="1" default-checked/>
+          <a-switch v-decorator="['${po.fieldName}', validatorRules.${po.fieldName}]" checked-children="0" un-checked-children="1" default-checked/>
 	<#elseif po.classType=='list' || po.classType=='radio'>
 		<#assign form_select = true>
           <j-dict-select-tag type="${po.classType}" v-decorator="['${po.fieldName}', validatorRules.${po.fieldName}]" :trigger-change="true" dictCode="${form_field_dictCode}" placeholder="请选择${po.filedComment}"/>
@@ -80,6 +80,8 @@
           <j-editor v-decorator="['${po.fieldName}',{trigger:'input'}]"/>
     <#elseif po.fieldDbType=='Blob'>
           <a-input v-decorator="[ '${po.fieldName}String', validatorRules.${po.fieldName}]" placeholder="请输入${po.filedComment}"></a-input>
+    <#elseif po.classType =='password'>
+          <a-input type="password" v-decorator="[ '${po.fieldName}', validatorRules.${po.fieldName}]" placeholder="请输入${po.filedComment}"></a-input>
 	<#else>
           <a-input v-decorator="[ '${po.fieldName}', validatorRules.${po.fieldName}]" placeholder="请输入${po.filedComment}"></a-input>
     </#if>
@@ -216,7 +218,7 @@
               httpurl+=this.url.edit;
                method = 'put';
             }
-            let formData = Object.assign(this.model, values);
+            let formData = Object.assign(this.model, this.dateFormatDate(values));
             console.log("表单提交数据",formData)
             this.$httpReq(httpurl,formData,method).then((res)=>{
               if(res.success){
@@ -238,6 +240,16 @@
       },
       popupCallback(row){
         this.form.setFieldsValue(pick(row<#list columns as po><#if po.fieldName !='id'><#if po.fieldDbType=='Blob'>,'${po.fieldName}String'<#else>,'${po.fieldName}'</#if></#if></#list>))
+      },
+      dateFormatDate(form){
+      <#list columns as po>
+        <#if po.isShow =='Y'>
+          <#if po.classType =='date'>
+        form['${po.fieldName}'] = form['${po.fieldName}']? formatDate(form['${po.fieldName}'],"yyyy-MM-dd hh:mm:ss"):null;
+          </#if>
+        </#if>
+      </#list>
+        return form;
       },
       <#if form_cat_tree>
       handleCategoryChange(value,backObj){

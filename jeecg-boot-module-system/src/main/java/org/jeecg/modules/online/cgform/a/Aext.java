@@ -155,7 +155,7 @@ public class Aext extends a {
                 String dbFieldTxt = filed.getDbFieldTxt();
                 String dbFieldName = filed.getDbFieldName();
                 String mustinput = filed.getFieldMustInput();
-                if ("1".equals(mustinput) && !"*".equals(format)) {   //必填也就是非空
+                if ("1".equals(mustinput)) {   //必填也就是非空
                     String method = toLowerCaseFirstOne(entityName) + ".get" + toUpperCaseFirstOne(lineToHump(dbFieldName)) + "()";
                     sb.append("\t   result = ValidUtil.valid(" + method + ", \"" + dbFieldTxt + "\", \"*\");\r\n");
                     sb.append("\t   if(!StringUtils.isEmpty(result))\r\n");
@@ -207,6 +207,9 @@ public class Aext extends a {
         // mysql 代码块 --开始
         JSONArray jsonArray = new JSONArray();
         tables.forEach(table -> {
+            if(((String) table.get("TABLE_NAME")).length()<=1){
+                throw new RuntimeException((String) table.get("TABLE_NAME")+"表名为单个字母，生成器不支持单个字母表名，请修改！");
+            }
             // 调用接口给数据库插入表创建信息
             JSONObject result = runA(table);
             if (result.get("code") != null) {
@@ -237,6 +240,8 @@ public class Aext extends a {
 
     private JSONObject runA(Map table) {
         JSONObject jsonObject = new JSONObject();
+        // 查询表的字段信息
+        JSONArray jsonArray = new JSONArray(); // 错误信息记录
         // 1、调用创建addAll接口,设置表信息
         //组织数据
         /*
@@ -297,7 +302,11 @@ public class Aext extends a {
         OnlCgformHead onlCgformHead = new OnlCgformHead(); // 表信息
         onlCgformHead.setFormCategory("bdfl_include"); // 导入表单
         onlCgformHead.setFormTemplate("99"); // form表单模板
-        onlCgformHead.setIdType("uuid");  // 主键生成策略
+        List<String> pRITypes = onlCgformTableService.getPRIType((String) table.get("TABLE_NAME"));
+        if (pRITypes.size()!=1){
+            jsonArray.add("=========================表"+(String) table.get("TABLE_NAME")+"有两个主键，生成器默认以第一个为主键生成策略");
+        }
+        onlCgformHead.setIdType(pRITypes.size()>0?("varchar".equals(pRITypes.get(0))?"UUID":"NATIVE"):"NATIVE");  // 主键生成策略
         onlCgformHead.setIsCheckbox("Y"); //
         onlCgformHead.setIsPage("Y");  // 分页
         onlCgformHead.setIsTree("N"); //  树结构
@@ -309,8 +318,6 @@ public class Aext extends a {
         onlCgformHead.setThemeTemplate("normal");   // 模板主题
         b.setHead(onlCgformHead);
 
-        // 查询表的字段信息
-        JSONArray jsonArray = new JSONArray(); // 错误信息记录
         List<OnlCgformField> list = new ArrayList<>(); // 列信息
         List<Map> columns = onlCgformTableService.listTableColumn((String) table.get("TABLE_NAME"));
         columns.forEach(column -> {
@@ -340,7 +347,7 @@ public class Aext extends a {
             object.setDbLength(db_length);
             object.setDbType((String) column.get("DATA_TYPE"));
             object.setFieldLength(db_length);
-            object.setDbIsNull("YES".equals((String)column.get("IS_NULLABLE"))?0:1);
+            object.setDbIsNull("YES".equals((String)column.get("IS_NULLABLE"))?1:0);
             object.setFieldMustInput(column_comments.length > 3 && column_comments[3].contains("req") ? "1" : "0");
             object.setFieldShowType(fieldShowTypeEscape(column_comments.length > 2 ? column_comments[2] : "text")); // 字段显示类型
             object.setIsQuery("PRI".equals(column.get("COLUMN_KEY")) ? 0 : isQueryEscape(column_comments.length > 5 ? column_comments[5] : "null"));
@@ -349,9 +356,9 @@ public class Aext extends a {
             object.setIsShowList("PRI".equals(column.get("COLUMN_KEY")) ? 0 : isShowListEscape(column_comments.length > 7 ? column_comments[7] : "null"));
             object.setOrderNum("PRI".equals(column.get("COLUMN_KEY")) ? 1 : 0);
             object.setQueryMode(column_comments.length > 5 && "searplus".equals(column_comments[5]) ? "" : "single");
-            object.setDictTable(column_comments.length > 4 && "null".equals(column_comments[4]) ? column_comments[4].split(",")[0] : "");
-            object.setDictField(column_comments.length > 4 && "null".equals(column_comments[4]) && column_comments[4].split(",").length == 3 ? column_comments[4].split(",")[2] : "");
-            object.setDictText(column_comments.length > 4 && "null".equals(column_comments[4]) && column_comments[4].split(",").length >= 2 ? column_comments[4].split(",")[1] : "");
+            object.setDictTable(column_comments.length > 4 && !"null".equals(column_comments[4]) ? column_comments[4].split(",")[0] : "");
+            object.setDictField(column_comments.length > 4 && !"null".equals(column_comments[4]) && column_comments[4].split(",").length == 3 ? column_comments[4].split(",")[2] : "");
+            object.setDictText(column_comments.length > 4 && !"null".equals(column_comments[4]) && column_comments[4].split(",").length >= 2 ? column_comments[4].split(",")[1] : "");
             object.setFieldValidType(fieldValidTypeCheck(column_comments.length > 3 ? column_comments[3] : ""));
 //            fieldExtendJson: ""
 //            fieldHref: ""
